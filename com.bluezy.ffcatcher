@@ -1,0 +1,45 @@
+package com.bluezy.ffcatcher
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.location.LocationManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+object GpsHelper {
+
+    data class Location(
+        val lat: Double,
+        val lon: Double,
+        val accuracy: Float,
+        val provider: String
+    )
+
+    @SuppressLint("MissingPermission")
+    suspend fun getLocation(context: Context): Location? = withContext(Dispatchers.IO) {
+        try {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val providers = listOf(
+                LocationManager.GPS_PROVIDER,
+                LocationManager.NETWORK_PROVIDER,
+                LocationManager.PASSIVE_PROVIDER
+            )
+            var best: android.location.Location? = null
+            for (p in providers) {
+                try {
+                    if (!lm.isProviderEnabled(p)) continue
+                    val loc = lm.getLastKnownLocation(p) ?: continue
+                    if (best == null || loc.accuracy < best!!.accuracy) best = loc
+                } catch (_: Exception) {}
+            }
+            best?.let {
+                Location(
+                    lat = it.latitude,
+                    lon = it.longitude,
+                    accuracy = it.accuracy,
+                    provider = it.provider ?: "unknown"
+                )
+            }
+        } catch (e: Exception) { null }
+    }
+}
